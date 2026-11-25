@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI Pong</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        /* Estilos Base e Tipografia Arcade */
+        :root {
+            --cyan-neon: #00f3ff;
+            --magenta-neon: #ff0055;
+            --gold-neon: #ffea00;
+            --bg-dark: #070913;
+            --panel-bg: rgba(13, 18, 36, 0.85);
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-dark);
+            color: #ffffff;
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            height: 100dvh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            background-image:
+                radial-gradient(circle at 20% 20%, rgba(0, 243, 255, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(255, 0, 85, 0.08) 0%, transparent 40%),
+                linear-gradient(to bottom, #070913 0%, #0c1024 100%);
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Efeitos Neon e Brilho */
+        .glow-cyan {
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.8), 0 0 25px rgba(0, 243, 255, 0.4);
+        }
+
+        .glow-magenta {
+            text-shadow: 0 0 10px rgba(255, 0, 85, 0.8), 0 0 25px rgba(255, 0, 85, 0.4);
+        }
+
+        .glow-gold {
+            text-shadow: 0 0 10px rgba(255, 234, 0, 0.8), 0 0 20px rgba(255, 234, 0, 0.4);
+        }
+
+        .box-glow-cyan {
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3), inset 0 0 10px rgba(0, 243, 255, 0.15);
+        }
+
+        .box-glow-magenta {
+            box-shadow: 0 0 15px rgba(255, 0, 85, 0.3), inset 0 0 10px rgba(255, 0, 85, 0.15);
+        }
+
+        /* Botões Estilo Arcade */
+        .arcade-btn {
+            position: relative;
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(20, 27, 52, 0.8);
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .arcade-btn:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .arcade-btn:active {
+            transform: translateY(1px);
+        }
+
+        .arcade-btn.active-cyan {
+            background: rgba(0, 243, 255, 0.18);
+            border-color: var(--cyan-neon);
+            color: #ffffff;
+            box-shadow: 0 0 18px rgba(0, 243, 255, 0.45), inset 0 0 10px rgba(0, 243, 255, 0.25);
+        }
+
+        .arcade-btn.active-magenta {
+            background: rgba(255, 0, 85, 0.18);
+            border-color: var(--magenta-neon);
+            color: #ffffff;
+            box-shadow: 0 0 18px rgba(255, 0, 85, 0.45), inset 0 0 10px rgba(255, 0, 85, 0.25);
+        }
+
+        .arcade-btn.active-gold {
+            background: rgba(255, 234, 0, 0.18);
+            border-color: var(--gold-neon);
+            color: #ffffff;
+            box-shadow: 0 0 18px rgba(255, 234, 0, 0.45), inset 0 0 10px rgba(255, 234, 0, 0.25);
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #00f3ff 0%, #0077ff 100%);
+            color: #050814;
+            border: none;
+            box-shadow: 0 0 25px rgba(0, 243, 255, 0.6);
+        }
+
+        .btn-start:hover {
+            box-shadow: 0 0 35px rgba(0, 243, 255, 0.9);
+            transform: scale(1.03);
+        }
+
+        /* Painel Glassmorphism */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75);
+        }
+
+        /* Container do Canvas */
+        #arena-wrapper {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0.5rem 1rem 1rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            box-shadow:
+                0 0 30px rgba(0, 0, 0, 0.8),
+                inset 0 0 40px rgba(0, 243, 255, 0.05);
+            background: radial-gradient(ellipse at center, #0e142b 0%, #060812 100%);
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Grade sutil de fundo estilo CRT/Grid */
+        .cyber-grid {
+            background-size: 40px 40px;
+            background-image:
+                linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+        }
+
+        /* Animações */
+        @keyframes pulse-scale {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.08);
+            }
+        }
+
+        .animate-countdown {
+            animation: pulse-scale 0.6s ease-in-out infinite;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Cabeçalho Superior / HUD -->
+    <header class="w-full max-w-6xl mx-auto px-4 pt-3 pb-1 flex items-center justify-between z-20">
+        <!-- Marca e Status -->
+        <div class="flex items-center gap-3">
+            <div class="w-3 h-3 rounded-full bg-[#00f3ff] shadow-[0_0_12px_#00f3ff]"></div>
+            <h1
+                class="font-orbitron font-black text-lg sm:text-2xl tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-[#00f3ff] via-white to-[#ff0055]">
+                AI PONG
+            </h1>
+            <span id="hud-badge"
+                class="hidden sm:inline-block text-xs font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-white/10 text-cyan-300 border border-cyan-400/30">
+                Médio • 5 Pts
+            </span>
+        </div>
+
+        <!-- Placar Central Compacto (visível durante o jogo) -->
+        <div id="hud-scoreboard"
+            class="flex items-center gap-4 sm:gap-8 bg-slate-900/80 border border-white/10 px-4 sm:px-6 py-1 rounded-full shadow-lg">
+            <div class="flex items-center gap-2">
+                <span class="text-xs sm:text-sm font-bold tracking-wider text-[#00f3ff] uppercase">Você</span>
+                <span id="score-player"
+                    class="font-orbitron font-black text-xl sm:text-3xl text-[#00f3ff] glow-cyan">0</span>
+            </div>
+            <div class="text-slate-500 font-orbitron text-xs sm:text-sm font-bold">VS</div>
+            <div class="flex items-center gap-2">
+                <span id="score-ai"
+                    class="font-orbitron font-black text-xl sm:text-3xl text-[#ff0055] glow-magenta">0</span>
+                <span id="ai-label-hud"
+                    class="text-xs sm:text-sm font-bold tracking-wider text-[#ff0055] uppercase">IA</span>
+            </div>
+        </div>
+
+        <!-- Controles Rápidos (Áudio, Pausa, Menu) -->
+        <div class="flex items-center gap-2">
+            <button id="btn-audio" title="Alternar Som"
+                class="arcade-btn p-2.5 rounded-xl text-slate-200 hover:text-[#00f3ff]" aria-label="Alternar Áudio">
+                <!-- Ícone Som Ligado -->
+                <svg id="icon-sound-on" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+                <!-- Ícone Som Mudo -->
+                <svg id="icon-sound-off" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 hidden text-rose-400"
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                </svg>
+            </button>
+
+            <button id="btn-pause" title="Pausar / Continuar"
+                class="arcade-btn p-2.5 rounded-xl text-slate-200 hover:text-amber-300 hidden" aria-label="Pausar Jogo">
+                <svg id="icon-pause" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <svg id="icon-play" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 hidden text-emerald-400"
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </button>
+
+            <button id="btn-home" title="Menu Principal"
+                class="arcade-btn p-2.5 rounded-xl text-slate-200 hover:text-rose-400 hidden"
+                aria-label="Voltar ao Menu">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Área Principal da Arena -->
+    <main id="arena-wrapper">
+        <div id="game-container" class="cyber-grid">
+            <canvas id="pongCanvas"></canvas>
+
+            <!-- Sobreposição de Contagem Regressiva / Mensagens Rápidas -->
+            <div id="countdown-overlay"
+                class="hidden absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+                <div id="countdown-sub"
+                    class="text-sm sm:text-base font-orbitron uppercase tracking-[0.25em] text-cyan-300 mb-1">PREPARE-SE
+                </div>
+                <div id="countdown-number"
+                    class="font-orbitron font-black text-6xl sm:text-8xl text-white glow-gold animate-countdown">3</div>
+            </div>
+
+            <!-- Sobreposição de Pausa -->
+            <div id="pause-overlay"
+                class="hidden absolute inset-0 bg-slate-950/75 backdrop-blur-sm flex flex-col items-center justify-center z-20 p-4">
+                <div class="glass-panel rounded-2xl p-6 sm:p-8 max-w-sm w-full text-center border border-amber-400/30">
+                    <h2 class="font-orbitron font-black text-2xl sm:text-3xl text-amber-300 glow-gold mb-2">JOGO PAUSADO
+                    </h2>
+                    <p class="text-slate-300 text-sm sm:text-base mb-6">A partida está em espera. Deseja continuar o
+                        desafio?</p>
+                    <div class="flex flex-col gap-3">
+                        <button id="btn-resume"
+                            class="btn-start font-orbitron font-bold py-3 px-6 rounded-xl text-sm sm:text-base tracking-wider uppercase">
+                            Continuar Partida
+                        </button>
+                        <button id="btn-restart-pause"
+                            class="arcade-btn font-orbitron font-bold py-3 px-6 rounded-xl text-sm text-cyan-300 hover:bg-cyan-500/10 uppercase">
+                            Reiniciar Partida
+                        </button>
+                        <button id="btn-menu-pause"
+                            class="arcade-btn font-orbitron font-bold py-3 px-6 rounded-xl text-sm text-slate-300 hover:text-rose-400 uppercase">
+                            Alterar Configurações
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Menu Inicial Integrado -->
+            <div id="start-overlay"
+                class="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-30 p-4 overflow-y-auto">
+                <div class="glass-panel rounded-2xl p-5 sm:p-8 max-w-lg w-full border border-cyan-500/30 my-auto">
+                    <!-- Título do Menu -->
+                    <div class="text-center mb-6">
+                        <div
+                            class="inline-block px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-400/30 text-[#00f3ff] text-xs font-orbitron tracking-widest uppercase mb-2">
+                            Edição Arcade Neon
+                        </div>
+                        <h2 class="font-orbitron font-black text-3xl sm:text-5xl tracking-tight text-white mb-2">
+                            AI <span class="text-[#00f3ff] glow-cyan">PONG</span>
+                        </h2>
+                        <p class="text-slate-300 text-sm sm:text-base">
+                            Enfrente uma Inteligência Artificial adaptativa em duelos de alta velocidade.
+                        </p>
+                    </div>
+
+                    <!-- Seleção de Dificuldade -->
+                    <div class="mb-5">
+                        <label class="block text-xs font-orbitron uppercase tracking-widest text-slate-400 mb-2.5">
+                            1. Nível da Inteligência Artificial
+                        </label>
+                        <div class="grid grid-cols-3 gap-2.5" id="difficulty-selector">
+                            <button type="button" data-diff="easy"
+                                class="arcade-btn py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1">
+                                <span class="font-orbitron font-bold text-xs sm:text-sm text-emerald-400">FÁCIL</span>
+                                <span class="text-[11px] text-slate-400">Casual</span>
+                            </button>
+                            <button type="button" data-diff="medium"
+                                class="arcade-btn active-cyan py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1">
+                                <span class="font-orbitron font-bold text-xs sm:text-sm text-[#00f3ff]">MÉDIO</span>
+                                <span class="text-[11px] text-slate-300">Equilibrado</span>
+                            </button>
+                            <button type="button" data-diff="hard"
+                                class="arcade-btn py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1">
+                                <span class="font-orbitron font-bold text-xs sm:text-sm text-[#ff0055]">DIFÍCIL</span>
+                                <span class="text-[11px] text-slate-400">Implacável</span>
+                            </button>
+                        </div>
+                        <p id="diff-description"
+                            class="text-xs text-cyan-200/80 mt-2 text-center bg-slate-900/60 py-1.5 px-3 rounded-lg border border-white/5">
+                            IA com reflexos moderados, leitura de trajetória e margem de erro humana.
+                        </p>
+                    </div>
+
+                    <!-- Seleção de Pontuação Alvo -->
+                    <div class="mb-6">
+                        <label class="block text-xs font-orbitron uppercase tracking-widest text-slate-400 mb-2.5">
+                            2. Meta de Pontos para Vencer
+                        </label>
+                        <div class="grid grid-cols-2 gap-3" id="points-selector">
+                            <button type="button" data-points="5"
+                                class="arcade-btn active-gold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2">
+                                <span class="font-orbitron font-black text-lg text-[#ffea00]">5</span>
+                                <span class="text-xs sm:text-sm font-semibold uppercase tracking-wider">Pontos
+                                    (Rápida)</span>
+                            </button>
+                            <button type="button" data-points="10"
+                                class="arcade-btn py-2.5 px-4 rounded-xl flex items-center justify-center gap-2">
+                                <span class="font-orbitron font-black text-lg text-slate-300">10</span>
+                                <span class="text-xs sm:text-sm font-semibold uppercase tracking-wider">Pontos
+                                    (Clássica)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Botão Jogar -->
+                    <button id="btn-start-game"
+                        class="btn-start w-full font-orbitron font-black text-base sm:text-lg py-3.5 px-6 rounded-xl tracking-widest uppercase mb-4">
+                        Iniciar Partida
+                    </button>
+
+                    <!-- Dica de Controles -->
+                    <div
+                        class="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-xs text-slate-400 border-t border-white/10 pt-3">
+                        <span class="flex items-center gap-1.5">
+                            <kbd
+                                class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-600 text-slate-200 font-mono">W/S</kbd>
+                            ou <kbd
+                                class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-600 text-slate-200 font-mono">↑/↓</kbd>
+                            Teclado
+                        </span>
+                        <span class="flex items-center gap-1.5">
+                            <span class="text-[#00f3ff]">●</span> Mouse ou Arrastar na Tela
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tela de Fim de Jogo (Vitória / Derrota) -->
+            <div id="gameover-overlay"
+                class="hidden absolute inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center z-30 p-4">
+                <div id="gameover-card"
+                    class="glass-panel rounded-2xl p-6 sm:p-8 max-w-md w-full text-center border border-cyan-400/40">
+                    <div id="gameover-badge"
+                        class="inline-block px-3 py-1 rounded-full text-xs font-orbitron uppercase tracking-widest mb-2 bg-cyan-500/20 text-cyan-300">
+                        Fim de Partida
+                    </div>
+                    <h2 id="gameover-title"
+                        class="font-orbitron font-black text-3xl sm:text-4xl mb-1 text-[#00f3ff] glow-cyan">
+                        VOCÊ VENCEU!
+                    </h2>
+                    <p id="gameover-subtitle" class="text-slate-300 text-sm mb-5">
+                        Excelente domínio da arena contra a Inteligência Artificial.
+                    </p>
+
+                    <!-- Placar Final -->
+                    <div
+                        class="bg-slate-900/90 rounded-xl p-4 mb-5 border border-white/10 flex items-center justify-around">
+                        <div>
+                            <div class="text-xs font-bold uppercase text-[#00f3ff] tracking-wider">Você</div>
+                            <div id="final-player-score"
+                                class="font-orbitron font-black text-3xl sm:text-4xl text-white">5</div>
+                        </div>
+                        <div class="text-slate-600 font-orbitron font-bold text-lg">X</div>
+                        <div>
+                            <div class="text-xs font-bold uppercase text-[#ff0055] tracking-wider">IA (<span
+                                    id="final-diff-label">Médio</span>)</div>
+                            <div id="final-ai-score" class="font-orbitron font-black text-3xl sm:text-4xl text-white">3
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Estatísticas da Partida -->
+                    <div class="grid grid-cols-2 gap-3 mb-6 text-left">
+                        <div class="bg-slate-900/60 p-3 rounded-xl border border-white/5">
+                            <div class="text-[11px] uppercase tracking-wider text-slate-400">Maior Rally</div>
+                            <div id="stat-max-rally" class="font-orbitron font-bold text-lg text-[#ffea00]">0 rebatidas
+                            </div>
+                        </div>
+                        <div class="bg-slate-900/60 p-3 rounded-xl border border-white/5">
+                            <div class="text-[11px] uppercase tracking-wider text-slate-400">Velocidade Máx.</div>
+                            <div id="stat-max-speed" class="font-orbitron font-bold text-lg text-cyan-300">100%</div>
+                        </div>
+                    </div>
+
+                    <!-- Ações Pós-Jogo -->
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button id="btn-play-again"
+                            class="btn-start flex-1 font-orbitron font-bold py-3 px-4 rounded-xl text-sm tracking-wider uppercase">
+                            Jogar Novamente
+                        </button>
+                        <button id="btn-back-menu"
+                            class="arcade-btn font-orbitron font-bold py-3 px-4 rounded-xl text-sm text-slate-200 hover:text-cyan-300 uppercase">
+                            Menu
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        /**
+         * AI PONG - Engine Completa em HTML5 Canvas + Web Audio API
+         * Desenvolvido com física dinâmica, previsão de trajetória para IA e feedback visual/sonoro.
+         */
+
+        // ==========================================
+        // 1. SISTEMA DE ÁUDIO SINTETIZADO (WEB AUDIO API)
+        // ==========================================
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            toggleMute() {
+                this.muted = !this.muted;
+                return this.muted;
+            }
+
+            playPaddleHit(speedRatio = 1, isPlayer = true) {
+                if (this.muted) return;
+                this.init();
+
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                // Frequência sobe conforme a velocidade da bola aumenta
+                const baseFreq = isPlayer ? 420 : 340;
+                const freq = baseFreq + (speedRatio - 1) * 260;
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now);
+                osc.frequency.exponentialRampToValueAtTime(freq * 1.4, now + 0.08);
+
+                gain.gain.setValueAtTime(0.22, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.09);
+            }
+
+            playWallHit() {
+                if (this.muted) return;
+                this.init();
+
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.exponentialRampToValueAtTime(140, now + 0.06);
+
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.06);
+            }
+
+            playScore(playerScored) {
+                if (this.muted) return;
+                this.init();
+
+                const now = this.ctx.currentTime;
+                const notes = playerScored ? [523.25, 659.25, 783.99] : [329.63, 277.18, 220.00];
+
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = playerScored ? 'triangle' : 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.07);
+
+                    gain.gain.setValueAtTime(0.16, now + idx * 0.07);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.07 + 0.22);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(now + idx * 0.07);
+                    osc.stop(now + idx * 0.07 + 0.23);
+                });
+            }
+
+            playCountdown(isGo = false) {
+                if (this.muted) return;
+                this.init();
+
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(isGo ? 880 : 440, now);
+
+                gain.gain.setValueAtTime(0.14, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + (isGo ? 0.22 : 0.12));
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + (isGo ? 0.23 : 0.13));
+            }
+
+            playWinLose(won) {
+                if (this.muted) return;
+                this.init();
+
+                const now = this.ctx.currentTime;
+                const notes = won
+                    ? [523.25, 659.25, 783.99, 1046.50]
+                    : [392.00, 349.23, 311.13, 261.63];
+
+                notes.forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + i * 0.11);
+
+                    gain.gain.setValueAtTime(0.2, now + i * 0.11);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.11 + 0.35);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(now + i * 0.11);
+                    osc.stop(now + i * 0.11 + 0.36);
+                });
+            }
+        }
+
+        // ==========================================
+        // 2. CONFIGURAÇÕES DE DIFICULDADE DA IA
+        // ==========================================
+        const AI_CONFIGS = {
+            easy: {
+                label: 'Fácil',
+                description: 'IA mais lenta, com tempo de reação maior e erros frequentes de posicionamento.',
+                maxSpeedFactor: 0.52,     // Velocidade máxima relativa à altura da arena
+                reactionDelay: 0.26,      // Segundos entre atualizações de alvo
+                errorMargin: 0.24,        // Erro proporcional à altura da raquete/campo
+                predictBounces: false     // Não prevê rebotes nas paredes
+            },
+            medium: {
+                label: 'Médio',
+                description: 'IA com reflexos moderados, leitura de trajetória e margem de erro humana.',
+                maxSpeedFactor: 0.78,
+                reactionDelay: 0.14,
+                errorMargin: 0.11,
+                predictBounces: true
+            },
+            hard: {
+                label: 'Difícil',
+                description: 'IA de alta precisão que antecipa rebotes, ataca nos ângulos e exige reflexos rápidos.',
+                maxSpeedFactor: 1.08,
+                reactionDelay: 0.05,
+                errorMargin: 0.03,
+                predictBounces: true
+            }
+        };
+
+        // ==========================================
+        // 3. CONTROLADOR PRINCIPAL DO JOGO
+        // ==========================================
+        class AIPongGame {
+            constructor() {
+                this.canvas = document.getElementById('pongCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.container = document.getElementById('game-container');
+                this.sound = new SoundEngine();
+
+                // Configurações da Partida
+                this.difficulty = 'medium';
+                this.targetScore = 5;
+
+                // Estado do Jogo: 'MENU' | 'COUNTDOWN' | 'PLAYING' | 'PAUSED' | 'GAMEOVER'
+                this.state = 'MENU';
+                this.lastTime = 0;
+
+                // Placar e Estatísticas
+                this.playerScore = 0;
+                this.aiScore = 0;
+                this.currentRally = 0;
+                this.maxRally = 0;
+                this.maxSpeedMultiplier = 1.0;
+
+                // Dimensões Dinâmicas (atualizadas no resize)
+                this.width = 800;
+                this.height = 500;
+                this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+                // Entidades
+                this.player = {
+                    x: 24,
+                    y: 200,
+                    width: 14,
+                    height: 90,
+                    speed: 550,
+                    targetY: null,
+                    flash: 0
+                };
+
+                this.ai = {
+                    x: 762,
+                    y: 200,
+                    width: 14,
+                    height: 90,
+                    targetY: 250,
+                    reactionTimer: 0,
+                    errorOffset: 0,
+                    flash: 0
+                };
+
+                this.ball = {
+                    x: 400,
+                    y: 250,
+                    radius: 9,
+                    vx: 0,
+                    vy: 0,
+                    baseSpeed: 460,
+                    currentSpeed: 460,
+                    maxSpeed: 1050,
+                    trail: []
+                };
+
+                // Efeitos Visuais
+                this.particles = [];
+                this.floatingTexts = [];
+                this.shakeTime = 0;
+                this.shakeIntensity = 0;
+
+                // Controles de Input
+                this.keys = { up: false, down: false };
+                this.pointerActive = false;
+
+                // Inicialização
+                this.bindEvents();
+                this.resize();
+                this.resetPositions(1);
+                requestAnimationFrame((t) => this.loop(t));
+            }
+
+            // Ajusta o tamanho do Canvas responsivamente mantendo proporção visual limpa
+            resize() {
+                const rect = this.container.getBoundingClientRect();
+                const prevW = this.width;
+                const prevH = this.height;
+
+                this.width = Math.max(300, rect.width);
+                this.height = Math.max(240, rect.height);
+                this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+                this.canvas.width = Math.floor(this.width * this.dpr);
+                this.canvas.height = Math.floor(this.height * this.dpr);
+                this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+                // Proporções responsivas para raquetes e bola
+                const isMobile = this.width < 600;
+                const paddleMargin = isMobile ? 16 : 28;
+                const paddleW = isMobile ? 11 : 14;
+                const paddleH = Math.max(64, Math.min(115, this.height * 0.21));
+
+                this.player.width = paddleW;
+                this.player.height = paddleH;
+                this.player.x = paddleMargin;
+                this.player.speed = this.height * 1.35;
+
+                this.ai.width = paddleW;
+                this.ai.height = paddleH;
+                this.ai.x = this.width - paddleMargin - paddleW;
+
+                this.ball.radius = isMobile ? 7.5 : 9.5;
+                this.ball.baseSpeed = Math.max(340, this.width * 0.62);
+                this.ball.maxSpeed = this.ball.baseSpeed * 2.15;
+
+                // Preserva posição relativa ao redimensionar
+                if (prevW > 0 && prevH > 0) {
+                    this.player.y = (this.player.y / prevH) * this.height;
+                    this.ai.y = (this.ai.y / prevH) * this.height;
+                    this.ball.x = (this.ball.x / prevW) * this.width;
+                    this.ball.y = (this.ball.y / prevH) * this.height;
+                }
+
+                this.clampPaddles();
+            }
+
+            clampPaddles() {
+                const pad = 8;
+                this.player.y = Math.max(pad, Math.min(this.height - this.player.height - pad, this.player.y));
+                this.ai.y = Math.max(pad, Math.min(this.height - this.ai.height - pad, this.ai.y));
+            }
+
+            // Vincula eventos de UI, Teclado, Mouse e Touch
+            bindEvents() {
+                window.addEventListener('resize', () => this.resize());
+
+                // Seletor de Dificuldade no Menu
+                const diffButtons = document.querySelectorAll('#difficulty-selector button');
+                diffButtons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        this.sound.init();
+                        this.sound.playWallHit();
+                        diffButtons.forEach(b => b.classList.remove('active-cyan', 'active-magenta', 'active-gold'));
+                        const diff = btn.dataset.diff;
+                        this.difficulty = diff;
+
+                        if (diff === 'easy') btn.classList.add('active-cyan');
+                        if (diff === 'medium') btn.classList.add('active-cyan');
+                        if (diff === 'hard') btn.classList.add('active-magenta');
+
+                        document.getElementById('diff-description').textContent = AI_CONFIGS[diff].description;
+                    });
+                });
+
+                // Seletor de Pontuação no Menu
+                const pointButtons = document.querySelectorAll('#points-selector button');
+                pointButtons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        this.sound.init();
+                        this.sound.playWallHit();
+                        pointButtons.forEach(b => {
+                            b.classList.remove('active-gold');
+                            b.querySelector('span:first-child').classList.replace('text-[#ffea00]', 'text-slate-300');
+                        });
+                        btn.classList.add('active-gold');
+                        btn.querySelector('span:first-child').classList.replace('text-slate-300', 'text-[#ffea00]');
+                        this.targetScore = parseInt(btn.dataset.points, 10);
+                    });
+                });
+
+                // Botões Principais
+                document.getElementById('btn-start-game').addEventListener('click', () => this.startNewMatch());
+                document.getElementById('btn-play-again').addEventListener('click', () => this.startNewMatch());
+                document.getElementById('btn-back-menu').addEventListener('click', () => this.showMenu());
+
+                // Controles do HUD
+                document.getElementById('btn-audio').addEventListener('click', () => {
+                    const isMuted = this.sound.toggleMute();
+                    document.getElementById('icon-sound-on').classList.toggle('hidden', isMuted);
+                    document.getElementById('icon-sound-off').classList.toggle('hidden', !isMuted);
+                });
+
+                document.getElementById('btn-pause').addEventListener('click', () => this.togglePause());
+                document.getElementById('btn-resume').addEventListener('click', () => this.togglePause());
+                document.getElementById('btn-restart-pause').addEventListener('click', () => this.startNewMatch());
+                document.getElementById('btn-menu-pause').addEventListener('click', () => this.showMenu());
+                document.getElementById('btn-home').addEventListener('click', () => this.showMenu());
+
+                // Controles de Teclado
+                window.addEventListener('keydown', (e) => {
+                    if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') {
+                        this.keys.up = true;
+                        this.player.targetY = null;
+                    }
+                    if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') {
+                        this.keys.down = true;
+                        this.player.targetY = null;
+                    }
+                    if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
+                        if (this.state === 'PLAYING' || this.state === 'PAUSED') {
+                            this.togglePause();
+                        }
+                    }
+                });
+
+                window.addEventListener('keyup', (e) => {
+                    if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') this.keys.up = false;
+                    if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') this.keys.down = false;
+                });
+
+                // Controles de Mouse e Toque no Canvas
+                const updatePointerY = (clientY) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const relativeY = clientY - rect.top;
+                    this.player.targetY = relativeY - this.player.height / 2;
+                };
+
+                this.canvas.addEventListener('mousemove', (e) => {
+                    if (this.state === 'PLAYING' || this.state === 'COUNTDOWN') {
+                        updatePointerY(e.clientY);
+                    }
+                });
+
+                this.canvas.addEventListener('touchstart', (e) => {
+                    if (e.touches.length > 0) {
+                        this.pointerActive = true;
+                        updatePointerY(e.touches[0].clientY);
+                    }
+                }, { passive: true });
+
+                this.canvas.addEventListener('touchmove', (e) => {
+                    if (e.touches.length > 0 && (this.state === 'PLAYING' || this.state === 'COUNTDOWN')) {
+                        updatePointerY(e.touches[0].clientY);
+                    }
+                }, { passive: true });
+
+                this.canvas.addEventListener('touchend', () => {
+                    this.pointerActive = false;
+                });
+            }
+
+            // Inicia uma nova partida do zero
+            startNewMatch() {
+                this.sound.init();
+                this.playerScore = 0;
+                this.aiScore = 0;
+                this.currentRally = 0;
+                this.maxRally = 0;
+                this.maxSpeedMultiplier = 1.0;
+                this.particles = [];
+                this.floatingTexts = [];
+
+                this.updateScoreHUD();
+
+                // Atualiza badges do HUD
+                const diffLabel = AI_CONFIGS[this.difficulty].label;
+                const badge = document.getElementById('hud-badge');
+                badge.textContent = `${diffLabel} • ${this.targetScore} Pts`;
+                badge.classList.remove('hidden');
+
+                document.getElementById('ai-label-hud').textContent = `IA (${diffLabel})`;
+
+                // Esconde overlays e mostra botões de jogo
+                document.getElementById('start-overlay').classList.add('hidden');
+                document.getElementById('gameover-overlay').classList.add('hidden');
+                document.getElementById('pause-overlay').classList.add('hidden');
+                document.getElementById('btn-pause').classList.remove('hidden');
+                document.getElementById('btn-home').classList.remove('hidden');
+
+                this.updatePauseIcons(false);
+                this.prepareServe(Math.random() < 0.5 ? 1 : -1, 'INICIANDO');
+            }
+
+            showMenu() {
+                this.state = 'MENU';
+                if (this.countdownInterval) clearInterval(this.countdownInterval);
+
+                document.getElementById('start-overlay').classList.remove('hidden');
+                document.getElementById('gameover-overlay').classList.add('hidden');
+                document.getElementById('pause-overlay').classList.add('hidden');
+                document.getElementById('countdown-overlay').classList.add('hidden');
+                document.getElementById('btn-pause').classList.add('hidden');
+                document.getElementById('btn-home').classList.add('hidden');
+                document.getElementById('hud-badge').classList.add('hidden');
+
+                this.resetPositions(1);
+            }
+
+            togglePause() {
+                if (this.state === 'PLAYING') {
+                    this.state = 'PAUSED';
+                    document.getElementById('pause-overlay').classList.remove('hidden');
+                    this.updatePauseIcons(true);
+                } else if (this.state === 'PAUSED') {
+                    this.state = 'PLAYING';
+                    document.getElementById('pause-overlay').classList.add('hidden');
+                    this.updatePauseIcons(false);
+                    this.lastTime = performance.now();
+                }
+            }
+
+            updatePauseIcons(isPaused) {
+                document.getElementById('icon-pause').classList.toggle('hidden', isPaused);
+                document.getElementById('icon-play').classList.toggle('hidden', !isPaused);
+            }
+
+            updateScoreHUD() {
+                document.getElementById('score-player').textContent = this.playerScore;
+                document.getElementById('score-ai').textContent = this.aiScore;
+            }
+
+            // Reseta posições centrais para o saque
+            resetPositions(serveDirection = 1) {
+                this.player.y = (this.height - this.player.height) / 2;
+                this.ai.y = (this.height - this.ai.height) / 2;
+                this.ai.targetY = this.ai.y;
+                this.player.targetY = null;
+
+                this.ball.x = this.width / 2;
+                this.ball.y = this.height / 2;
+                this.ball.currentSpeed = this.ball.baseSpeed;
+                this.ball.trail = [];
+                this.currentRally = 0;
+
+                // Ângulo inicial suave (-28° a +28°)
+                const angle = (Math.random() * 0.96 - 0.48);
+                this.ball.vx = Math.cos(angle) * this.ball.currentSpeed * serveDirection;
+                this.ball.vy = Math.sin(angle) * this.ball.currentSpeed;
+            }
+
+            // Contagem regressiva rápida antes de lançar a bola
+            prepareServe(serveDirection, subtitle = 'PRÓXIMO SAQUE') {
+                this.resetPositions(serveDirection);
+                this.state = 'COUNTDOWN';
+
+                const overlay = document.getElementById('countdown-overlay');
+                const numEl = document.getElementById('countdown-number');
+                const subEl = document.getElementById('countdown-sub');
+
+                subEl.textContent = subtitle;
+                let count = 3;
+                numEl.textContent = count;
+                overlay.classList.remove('hidden');
+                this.sound.playCountdown(false);
+
+                if (this.countdownInterval) clearInterval(this.countdownInterval);
+
+                this.countdownInterval = setInterval(() => {
+                    if (this.state === 'MENU') {
+                        clearInterval(this.countdownInterval);
+                        return;
+                    }
+                    count--;
+                    if (count > 0) {
+                        numEl.textContent = count;
+                        this.sound.playCountdown(false);
+                    } else if (count === 0) {
+                        numEl.textContent = 'VAI!';
+                        this.sound.playCountdown(true);
+                    } else {
+                        clearInterval(this.countdownInterval);
+                        overlay.classList.add('hidden');
+                        if (this.state === 'COUNTDOWN') {
+                            this.state = 'PLAYING';
+                        }
+                    }
+                }, 480);
+            }
+
+            // ==========================================
+            // 4. ATUALIZAÇÃO DE FÍSICA E INTELIGÊNCIA ARTIFICIAL
+            // ==========================================
+            update(dt) {
+                // Atualiza partículas e textos flutuantes mesmo na contagem
+                this.updateEffects(dt);
+
+                if (this.state !== 'PLAYING' && this.state !== 'COUNTDOWN') return;
+
+                // Movimento do Jogador (permite posicionar durante a contagem também)
+                this.updatePlayer(dt);
+
+                if (this.state !== 'PLAYING') return;
+
+                // Atualiza IA
+                this.updateAI(dt);
+
+                // Atualiza Bola e Colisões
+                this.updateBall(dt);
+            }
+
+            updatePlayer(dt) {
+                if (this.keys.up) {
+                    this.player.y -= this.player.speed * dt;
+                } else if (this.keys.down) {
+                    this.player.y += this.player.speed * dt;
+                } else if (this.player.targetY !== null) {
+                    // Interpolação suave para mouse/touch evitando teletransporte brusco
+                    const diff = this.player.targetY - this.player.y;
+                    this.player.y += diff * Math.min(1, dt * 24);
+                }
+
+                this.clampPaddles();
+            }
+
+            // Lógica da IA com tempo de reação, previsão de trajetória e margem de erro
+            updateAI(dt) {
+                const cfg = AI_CONFIGS[this.difficulty];
+                const aiMaxSpeed = this.height * cfg.maxSpeedFactor;
+
+                this.ai.reactionTimer -= dt;
+
+                if (this.ai.reactionTimer <= 0) {
+                    this.ai.reactionTimer = cfg.reactionDelay;
+
+                    // Gera um desvio humano aleatório baseado na dificuldade
+                    const maxErrPx = this.height * cfg.errorMargin;
+                    this.ai.errorOffset = (Math.random() * 2 - 1) * maxErrPx;
+
+                    if (this.ball.vx > 0) {
+                        // A bola está indo em direção à IA
+                        let predictedY = this.ball.y;
+
+                        if (cfg.predictBounces) {
+                            predictedY = this.predictBallYAtX(this.ai.x);
+                        }
+
+                        this.ai.targetY = predictedY - (this.ai.height / 2) + this.ai.errorOffset;
+                    } else {
+                        // Bola indo para o jogador: IA retorna gradualmente para posição estratégica central
+                        this.ai.targetY = (this.height - this.ai.height) / 2 + (this.ai.errorOffset * 0.5);
+                    }
+                }
+
+                // Move a raquete da IA respeitando sua velocidade máxima
+                const diff = this.ai.targetY - this.ai.y;
+                const deadzone = 4;
+
+                if (Math.abs(diff) > deadzone) {
+                    const step = Math.sign(diff) * Math.min(Math.abs(diff), aiMaxSpeed * dt);
+                    this.ai.y += step;
+                }
+
+                this.clampPaddles();
+            }
+
+            // Calcula onde a bola cruzará a coordenada X da IA considerando rebotes nas bordas
+            predictBallYAtX(targetX) {
+                const dx = targetX - this.ball.x;
+                if (dx <= 0 || this.ball.vx <= 0) return this.ball.y;
+
+                const timeToReach = dx / this.ball.vx;
+                let projectedY = this.ball.y + this.ball.vy * timeToReach;
+
+                const minY = this.ball.radius;
+                const maxY = this.height - this.ball.radius;
+                const span = maxY - minY;
+
+                if (span <= 0) return this.height / 2;
+
+                // Simula reflexão nas paredes superior e inferior
+                while (projectedY < minY || projectedY > maxY) {
+                    if (projectedY < minY) {
+                        projectedY = minY + (minY - projectedY);
+                    }
+                    if (projectedY > maxY) {
+                        projectedY = maxY - (projectedY - maxY);
+                    }
+                }
+
+                return projectedY;
+            }
+
+            updateBall(dt) {
+                // Salva rastro da bola
+                this.ball.trail.push({ x: this.ball.x, y: this.ball.y });
+                if (this.ball.trail.length > 14) {
+                    this.ball.trail.shift();
+                }
+
+                // Sub-steps para evitar atravessar raquetes em altas velocidades
+                const steps = 2;
+                const subDt = dt / steps;
+
+                for (let s = 0; s < steps; s++) {
+                    this.ball.x += this.ball.vx * subDt;
+                    this.ball.y += this.ball.vy * subDt;
+
+                    // Colisão com Parede Superior
+                    if (this.ball.y - this.ball.radius <= 0) {
+                        this.ball.y = this.ball.radius;
+                        this.ball.vy = Math.abs(this.ball.vy);
+                        this.sound.playWallHit();
+                        this.spawnParticles(this.ball.x, this.ball.y, '#ffffff', 8);
+                    }
+
+                    // Colisão com Parede Inferior
+                    if (this.ball.y + this.ball.radius >= this.height) {
+                        this.ball.y = this.height - this.ball.radius;
+                        this.ball.vy = -Math.abs(this.ball.vy);
+                        this.sound.playWallHit();
+                        this.spawnParticles(this.ball.x, this.ball.y, '#ffffff', 8);
+                    }
+
+                    // Colisão com Raquete do Jogador (Esquerda)
+                    if (
+                        this.ball.vx < 0 &&
+                        this.ball.x - this.ball.radius <= this.player.x + this.player.width &&
+                        this.ball.x + this.ball.radius >= this.player.x &&
+                        this.ball.y + this.ball.radius >= this.player.y &&
+                        this.ball.y - this.ball.radius <= this.player.y + this.player.height
+                    ) {
+                        this.handlePaddleBounce(this.player, 1, '#00f3ff', true);
+                    }
+
+                    // Colisão com Raquete da IA (Direita)
+                    if (
+                        this.ball.vx > 0 &&
+                        this.ball.x + this.ball.radius >= this.ai.x &&
+                        this.ball.x - this.ball.radius <= this.ai.x + this.ai.width &&
+                        this.ball.y + this.ball.radius >= this.ai.y &&
+                        this.ball.y - this.ball.radius <= this.ai.y + this.ai.height
+                    ) {
+                        this.handlePaddleBounce(this.ai, -1, '#ff0055', false);
+                    }
+                }
+
+                // Verifica Pontuação (Bola saiu pela esquerda ou direita)
+                if (this.ball.x + this.ball.radius < 0) {
+                    this.onPointScored(false); // Ponto da IA
+                } else if (this.ball.x - this.ball.radius > this.width) {
+                    this.onPointScored(true);  // Ponto do Jogador
+                }
+            }
+
+            // Calcula ângulo dinâmico e aceleração progressiva ao rebater na raquete
+            handlePaddleBounce(paddle, dirX, color, isPlayer) {
+                // Posiciona bola fora da raquete para evitar dupla colisão
+                if (dirX === 1) {
+                    this.ball.x = paddle.x + paddle.width + this.ball.radius;
+                } else {
+                    this.ball.x = paddle.x - this.ball.radius;
+                }
+
+                // Ponto de impacto normalizado (-1 no topo da raquete, 0 no centro, +1 na base)
+                const paddleCenter = paddle.y + paddle.height / 2;
+                const relativeIntersect = (this.ball.y - paddleCenter) / (paddle.height / 2);
+                const clampedIntersect = Math.max(-1, Math.min(1, relativeIntersect));
+
+                // Ângulo máximo de 58 graus (1.01 radianos)
+                const maxBounceAngle = (58 * Math.PI) / 180;
+                const bounceAngle = clampedIntersect * maxBounceAngle;
+
+                // Acelera progressivamente a cada rebatida
+                this.currentRally++;
+                if (this.currentRally > this.maxRally) {
+                    this.maxRally = this.currentRally;
+                }
+
+                const acceleration = 1 + Math.min(0.055, 0.032 + this.currentRally * 0.002);
+                this.ball.currentSpeed = Math.min(this.ball.maxSpeed, this.ball.currentSpeed * acceleration);
+
+                const speedRatio = this.ball.currentSpeed / this.ball.baseSpeed;
+                if (speedRatio > this.maxSpeedMultiplier) {
+                    this.maxSpeedMultiplier = speedRatio;
+                }
+
+                this.ball.vx = Math.cos(bounceAngle) * this.ball.currentSpeed * dirX;
+                this.ball.vy = Math.sin(bounceAngle) * this.ball.currentSpeed;
+
+                // Feedback visual e sonoro
+                paddle.flash = 1.0;
+                this.triggerShake(0.12, Math.min(8, 3 + speedRatio * 2));
+                this.sound.playPaddleHit(speedRatio, isPlayer);
+                this.spawnParticles(this.ball.x, this.ball.y, color, 16);
+
+                if (this.currentRally > 0 && this.currentRally % 5 === 0) {
+                    this.addFloatingText(`${this.currentRally}x RALLY!`, this.width / 2, this.height * 0.25, '#ffea00');
+                }
+            }
+
+            onPointScored(playerScored) {
+                this.sound.playScore(playerScored);
+                this.triggerShake(0.25, 10);
+
+                if (playerScored) {
+                    this.playerScore++;
+                    this.spawnParticles(this.width - 20, this.ball.y, '#00f3ff', 35);
+                    this.addFloatingText('+1 PONTO!', this.width * 0.35, this.height * 0.45, '#00f3ff');
+                } else {
+                    this.aiScore++;
+                    this.spawnParticles(20, this.ball.y, '#ff0055', 35);
+                    this.addFloatingText('PONTO DA IA', this.width * 0.65, this.height * 0.45, '#ff0055');
+                }
+
+                this.updateScoreHUD();
+
+                // Verifica condição de vitória
+                if (this.playerScore >= this.targetScore || this.aiScore >= this.targetScore) {
+                    this.finishMatch(this.playerScore >= this.targetScore);
+                } else {
+                    // Quem sofreu o ponto recebe o próximo saque
+                    const nextDir = playerScored ? 1 : -1;
+                    this.prepareServe(nextDir, playerScored ? 'PONTO SEU!' : 'PONTO DA IA');
+                }
+            }
+
+            finishMatch(playerWon) {
+                this.state = 'GAMEOVER';
+                this.sound.playWinLose(playerWon);
+
+                document.getElementById('btn-pause').classList.add('hidden');
+                const overlay = document.getElementById('gameover-overlay');
+                const card = document.getElementById('gameover-card');
+                const title = document.getElementById('gameover-title');
+                const subtitle = document.getElementById('gameover-subtitle');
+                const badge = document.getElementById('gameover-badge');
+
+                if (playerWon) {
+                    card.className = 'glass-panel rounded-2xl p-6 sm:p-8 max-w-md w-full text-center border border-cyan-400/50 box-glow-cyan';
+                    badge.className = 'inline-block px-3 py-1 rounded-full text-xs font-orbitron uppercase tracking-widest mb-2 bg-cyan-500/20 text-cyan-300';
+                    badge.textContent = 'Vitória na Arena';
+                    title.className = 'font-orbitron font-black text-3xl sm:text-4xl mb-1 text-[#00f3ff] glow-cyan';
+                    title.textContent = 'VOCÊ VENCEU!';
+                    subtitle.textContent = `Você superou a IA no nível ${AI_CONFIGS[this.difficulty].label}!`;
+                } else {
+                    card.className = 'glass-panel rounded-2xl p-6 sm:p-8 max-w-md w-full text-center border border-rose-500/50 box-glow-magenta';
+                    badge.className = 'inline-block px-3 py-1 rounded-full text-xs font-orbitron uppercase tracking-widest mb-2 bg-rose-500/20 text-rose-300';
+                    badge.textContent = 'Derrota';
+                    title.className = 'font-orbitron font-black text-3xl sm:text-4xl mb-1 text-[#ff0055] glow-magenta';
+                    title.textContent = 'A IA VENCEU!';
+                    subtitle.textContent = 'Ajuste sua estratégia e tente uma revanche imediata.';
+                }
+
+                document.getElementById('final-player-score').textContent = this.playerScore;
+                document.getElementById('final-ai-score').textContent = this.aiScore;
+                document.getElementById('final-diff-label').textContent = AI_CONFIGS[this.difficulty].label;
+                document.getElementById('stat-max-rally').textContent = `${this.maxRally} ${this.maxRally === 1 ? 'rebatida' : 'rebatidas'}`;
+                document.getElementById('stat-max-speed').textContent = `${Math.round(this.maxSpeedMultiplier * 100)}%`;
+
+                overlay.classList.remove('hidden');
+            }
+
+            // ==========================================
+            // 5. SISTEMA DE PARTÍCULAS E EFEITOS VISUAIS
+            // ==========================================
+            spawnParticles(x, y, color, count) {
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 60 + Math.random() * 260;
+                    this.particles.push({
+                        x,
+                        y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: 1.0,
+                        decay: 1.8 + Math.random() * 1.5,
+                        size: 2 + Math.random() * 3.5,
+                        color
+                    });
+                }
+            }
+
+            addFloatingText(text, x, y, color) {
+                this.floatingTexts.push({
+                    text,
+                    x,
+                    y,
+                    vy: -45,
+                    life: 1.0,
+                    color
+                });
+            }
+
+            triggerShake(duration, intensity) {
+                this.shakeTime = duration;
+                this.shakeIntensity = intensity;
+            }
+
+            updateEffects(dt) {
+                if (this.player.flash > 0) this.player.flash = Math.max(0, this.player.flash - dt * 4);
+                if (this.ai.flash > 0) this.ai.flash = Math.max(0, this.ai.flash - dt * 4);
+                if (this.shakeTime > 0) this.shakeTime = Math.max(0, this.shakeTime - dt);
+
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.vx *= 0.96;
+                    p.vy *= 0.96;
+                    p.life -= p.decay * dt;
+                    if (p.life <= 0) this.particles.splice(i, 1);
+                }
+
+                for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+                    const ft = this.floatingTexts[i];
+                    ft.y += ft.vy * dt;
+                    ft.life -= dt * 1.1;
+                    if (ft.life <= 0) this.floatingTexts.splice(i, 1);
+                }
+            }
+
+            // ==========================================
+            // 6. RENDERIZAÇÃO NEON NO CANVAS
+            // ==========================================
+            draw() {
+                const ctx = this.ctx;
+                ctx.clearRect(0, 0, this.width, this.height);
+
+                ctx.save();
+
+                // Aplica Screen Shake no impacto
+                if (this.shakeTime > 0) {
+                    const dx = (Math.random() - 0.5) * 2 * this.shakeIntensity;
+                    const dy = (Math.random() - 0.5) * 2 * this.shakeIntensity;
+                    ctx.translate(dx, dy);
+                }
+
+                // 1. Linha Central Tracejada e Círculo Central
+                this.drawCourt();
+
+                // 2. Placar Gigante Translúcido no Fundo da Arena
+                this.drawBackgroundScore();
+
+                // 3. Rastro (Trail) da Bola
+                this.drawBallTrail();
+
+                // 4. Raquete do Jogador (Ciano Elétrico)
+                this.drawPaddle(this.player, '#00f3ff', this.player.flash);
+
+                // 5. Raquete da IA (Magenta Neon)
+                this.drawPaddle(this.ai, '#ff0055', this.ai.flash);
+
+                // 6. Bola Energizada
+                this.drawBall();
+
+                // 7. Partículas e Textos Flutuantes
+                this.drawParticles();
+                this.drawFloatingTexts();
+
+                ctx.restore();
+            }
+
+            drawCourt() {
+                const ctx = this.ctx;
+                const centerX = this.width / 2;
+                const centerY = this.height / 2;
+
+                ctx.save();
+                // Círculo central
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, Math.min(this.width, this.height) * 0.14, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Linha tracejada vertical
+                ctx.beginPath();
+                ctx.setLineDash([12, 14]);
+                ctx.moveTo(centerX, 12);
+                ctx.lineTo(centerX, this.height - 12);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            drawBackgroundScore() {
+                const ctx = this.ctx;
+                const fontSize = Math.min(this.width * 0.18, 140);
+
+                ctx.save();
+                ctx.font = `900 ${fontSize}px Orbitron, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                ctx.fillStyle = 'rgba(0, 243, 255, 0.045)';
+                ctx.fillText(this.playerScore, this.width * 0.25, this.height * 0.5);
+
+                ctx.fillStyle = 'rgba(255, 0, 85, 0.045)';
+                ctx.fillText(this.aiScore, this.width * 0.75, this.height * 0.5);
+                ctx.restore();
+            }
+
+            drawPaddle(paddle, color, flash) {
+                const ctx = this.ctx;
+                ctx.save();
+
+                ctx.shadowColor = flash > 0 ? '#ffffff' : color;
+                ctx.shadowBlur = 18 + flash * 16;
+
+                // Corpo arredondado da raquete
+                const radius = paddle.width / 2;
+                ctx.beginPath();
+                ctx.roundRect(paddle.x, paddle.y, paddle.width, paddle.height, radius);
+                ctx.fillStyle = flash > 0.3 ? '#ffffff' : color;
+                ctx.fill();
+
+                // Núcleo interno brilhante
+                ctx.beginPath();
+                ctx.roundRect(
+                    paddle.x + 3,
+                    paddle.y + 4,
+                    Math.max(2, paddle.width - 6),
+                    Math.max(4, paddle.height - 8),
+                    radius / 2
+                );
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+                ctx.fill();
+
+                ctx.restore();
+            }
+
+            drawBallTrail() {
+                const ctx = this.ctx;
+                const len = this.ball.trail.length;
+                if (len === 0) return;
+
+                ctx.save();
+                for (let i = 0; i < len; i++) {
+                    const pt = this.ball.trail[i];
+                    const ratio = (i + 1) / len;
+                    ctx.beginPath();
+                    ctx.arc(pt.x, pt.y, this.ball.radius * ratio * 0.85, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 234, 0, ${ratio * 0.28})`;
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            drawBall() {
+                const ctx = this.ctx;
+                ctx.save();
+
+                ctx.shadowColor = '#ffea00';
+                ctx.shadowBlur = 22;
+
+                // Aura externa dourada
+                ctx.beginPath();
+                ctx.arc(this.ball.x, this.ball.y, this.ball.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffea00';
+                ctx.fill();
+
+                // Centro branco intenso
+                ctx.beginPath();
+                ctx.arc(this.ball.x, this.ball.y, this.ball.radius * 0.58, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+
+                ctx.restore();
+            }
+
+            drawParticles() {
+                const ctx = this.ctx;
+                ctx.save();
+                for (const p of this.particles) {
+                    ctx.globalAlpha = Math.max(0, p.life);
+                    ctx.shadowColor = p.color;
+                    ctx.shadowBlur = 10;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            drawFloatingTexts() {
+                const ctx = this.ctx;
+                ctx.save();
+                ctx.font = '700 18px Orbitron, sans-serif';
+                ctx.textAlign = 'center';
+
+                for (const ft of this.floatingTexts) {
+                    ctx.globalAlpha = Math.max(0, ft.life);
+                    ctx.shadowColor = ft.color;
+                    ctx.shadowBlur = 12;
+                    ctx.fillStyle = ft.color;
+                    ctx.fillText(ft.text, ft.x, ft.y);
+                }
+                ctx.restore();
+            }
+
+            // Loop Principal a 60+ FPS com Delta Time controlado
+            loop(timestamp) {
+                if (!this.lastTime) this.lastTime = timestamp;
+                const dt = Math.min(0.05, (timestamp - this.lastTime) / 1000);
+                this.lastTime = timestamp;
+
+                this.update(dt);
+                this.draw();
+
+                requestAnimationFrame((t) => this.loop(t));
+            }
+        }
+
+        // Inicializa o jogo após o carregamento completo da janela
+        window.onload = function () {
+            window.aiPong = new AIPongGame();
+        };
+    </script>
+</body>
+
+</html>
